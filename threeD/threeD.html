@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>hangge.com</title>
+    <script type="text/javascript" src="../js/build/three.js"></script>
+    <script type="text/javascript" src="../js/examples/js/controls/OrbitControls.js"></script>
+    <script type="text/javascript" src="../js/examples/js/controls/TrackballControls.js "></script>
+    <script type="text/javascript" src="../physi/physi.js"></script>
+    <!--<script type="text/javascript" src="../js/src/core/Raycaster.js"></script>-->
+    <script type="text/javascript" src="../js/examples/js/controls/DragControls.js"></script>
+    <script type="text/javascript" src="../js/examples/js/controls/TransformControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+
+</head>
+<body>
+
+<!-- 作为Three.js渲染器输出元素 -->
+<div id="WebGL-output">
+</div>
+
+//shader
+<script id="vs" type="x-shader/x-vertex">
+            varying vec2 vUv;
+            void main()
+            {
+                // passing texture to fragment shader
+                vUv = uv;
+
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+            varying vec2 vUv;
+            void main() {
+                gl_FragColor = vec4(vUv.x, vUv.y, 0.0, 1.0);
+            }
+</script>
+
+<!-- 第一个 Three.js 样例代码 -->
+<script type="text/javascript">
+    'use strict';
+    Physijs.scripts.worker = '../phy/physijs_worker.js';
+    Physijs.scripts.ammo = '../physi/examples/js/ammo.js';
+    //网页加载完毕后会被调用
+    function init() {
+
+        var friction = 0.1; //摩擦力
+        var restitution = 1; //弹力
+
+        //创建一个场景（场景是一个容器，用于保存、跟踪所要渲染的物体和使用的光源）
+        var scene = new Physijs.Scene();
+        scene.setGravity(new THREE.Vector3(0,-200,0));
+
+        //创建一个摄像机对象（摄像机决定了能够在场景里看到什么）
+        var camera = new THREE.PerspectiveCamera(70,
+            window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        //设置摄像机的位置，并让其指向场景的中心（0,0,0）
+        camera.position.x = 20;
+        camera.position.y = 10;
+        camera.position.z = 50;
+
+        //创建一个WebGL渲染器并设置其大小
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(new THREE.Color(0xEEEEEE));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        //添加光源
+        var light = new THREE.PointLight(0xffffff);
+        light.position.set(0, 100, 0);
+        scene.add(light);
+        var ambientLight = new THREE.AmbientLight(0x111111);
+        scene.add(ambientLight);
+
+        //在场景中添加坐标轴
+        var axes = new THREE.AxesHelper(20);
+        scene.add(axes);
+
+        //创建一个平面
+        var planeGeometry = new THREE.PlaneGeometry(60, 20);
+        //平面使用颜色为0xcccccc的基本材质
+        var planeMaterial = new THREE.MeshBasicMaterial({color: 0xcccccc});
+        // var plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        var plane = new Physijs.BoxMesh(
+            planeGeometry,
+            planeMaterial,
+            0 // mass
+        );
+        plane.receiveShadow = true;
+
+        //设置屏幕的位置和旋转角度
+        plane.rotation.x = -0.5 * Math.PI;
+        plane.position.x = 15;
+        plane.position.y = 0;
+        plane.position.z = 0;
+
+        //将平面添加场景中
+        scene.add(plane);
+
+        //添加球状观察
+        var controls = new THREE.TrackballControls(camera, renderer.domElement);
+        controls.minDistance = 20.0;//最近距离
+        controls.maxDistance = 400.0;//最远距离
+        controls.dymnamicDampingFactor = 0.1;
+
+        //创建一个球体
+        var texture1 = THREE.ImageUtils.loadTexture("../texture/1.jpg");
+        var sphereGeometry1 = new THREE.SphereGeometry(4, 36, 36);
+        //将线框（wireframe）属性设置为true，这样物体就不会被渲染为实物物体
+        var spherematerial1 = new THREE.MeshPhongMaterial({map:texture1});
+        var phySphereMaterial1 = new Physijs.createMaterial(spherematerial1,friction,restitution);
+        var sphere1 = new Physijs.SphereMesh(sphereGeometry1, phySphereMaterial1,1);
+        //设置球体的位置
+        sphere1.position.x = 8;
+        sphere1.position.y = 6;
+        sphere1.position.z = 0;
+        //将球体添加到场景中
+        scene.add(sphere1);
+
+        //添加球约束
+        var constraint1 = new Physijs.PointConstraint(
+            sphere1, // 第一个被约束的对象
+            null,// 限制第一个对象的物体，可以忽略，如果被忽略，第一个对象将被限制到点上
+            new THREE.Vector3( 8, 26, 0 ) // 被限制到的点的位置
+        );
+        scene.addConstraint( constraint1 );
+
+        //创建一个球体
+        var texture2 = THREE.ImageUtils.loadTexture("../texture/2.jpg");
+        var sphereGeometry2 = new THREE.SphereGeometry(4, 36, 36);
+        //将线框（wireframe）属性设置为true，这样物体就不会被渲染为实物物体
+        var sphereMaterial2 = new THREE.MeshPhongMaterial({map:texture2});
+        var phySphereMaterial2 = new Physijs.createMaterial(sphereMaterial2,friction,restitution);
+        var sphere2 = new Physijs.SphereMesh(sphereGeometry2, phySphereMaterial2,1);
+
+        //设置球体的位置
+        sphere2.position.x = 16;
+        sphere2.position.y = 6;
+        sphere2.position.z = 0;
+
+        //将球体添加到场景中
+        scene.add(sphere2);
+
+        //添加球约束
+        var constraint2 = new Physijs.PointConstraint(
+            sphere2, // 第一个被约束的对象
+            null,// 限制第一个对象的物体，可以忽略，如果被忽略，第一个对象将被限制到点上
+            new THREE.Vector3( 16, 26, 0 ) // 被限制到的点的位置
+        );
+        scene.addConstraint( constraint2 );
+
+        //创建一个球体
+        var texture3 = THREE.ImageUtils.loadTexture("../texture/3.jpg");
+        var sphereGeometry3 = new THREE.SphereGeometry(4, 36, 36);
+        //将线框（wireframe）属性设置为true，这样物体就不会被渲染为实物物体
+        var sphereMaterial3 = new THREE.MeshPhongMaterial({map:texture3});
+        var phySphereMaterial3 = new Physijs.createMaterial(sphereMaterial3,friction,restitution);
+        var sphere3 = new Physijs.SphereMesh(sphereGeometry3, phySphereMaterial3);
+
+        //设置球体的位置
+        sphere3.position.x = 24;
+        sphere3.position.y = 6;
+        sphere3.position.z = 0;
+
+        //将球体添加到场景中
+        scene.add(sphere3);
+
+        //添加球约束
+        var constraint3 = new Physijs.PointConstraint(
+            sphere3, // 第一个被约束的对象
+            null,// 限制第一个对象的物体，可以忽略，如果被忽略，第一个对象将被限制到点上
+            new THREE.Vector3( 24, 26, 0 ) // 被限制到的点的位置
+        );
+        scene.addConstraint( constraint3 );
+
+        //创建一个球体
+        var texture4 = THREE.ImageUtils.loadTexture("../texture/4.jpg");
+        var sphereGeometry4 = new THREE.SphereGeometry(4, 36, 36);
+        //将线框（wireframe）属性设置为true，这样物体就不会被渲染为实物物体
+        var sphereMaterial4 = new THREE.MeshPhongMaterial({map:texture4});
+        var phySphereMaterial4 = new Physijs.createMaterial(sphereMaterial4,friction,restitution);
+        var sphere4 = new Physijs.SphereMesh(sphereGeometry4, phySphereMaterial4);
+
+        //设置球体的位置
+        sphere4.position.x = 52;
+        sphere4.position.y = 26;
+        sphere4.position.z = 0;
+
+        //将球体添加到场景中
+        scene.add(sphere4);
+        //添加球约束
+        var constraint4 = new Physijs.PointConstraint(
+            sphere4, // 第一个被约束的对象
+            null,// 限制第一个对象的物体，可以忽略，如果被忽略，第一个对象将被限制到点上
+            new THREE.Vector3( 32, 26, 0 ) // 被限制到的点的位置
+        );
+        scene.addConstraint( constraint4 );
+
+        //架子
+        var cyLinderGeometry1 = new THREE.CylinderGeometry( 0.4, 0.4, 40, 36 );
+        var cyLinderMaterial1 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial1 = new Physijs.createMaterial(cyLinderMaterial1,friction,restitution);
+        var cylinder1 = new Physijs.BoxMesh(cyLinderGeometry1, phyCyLinderMaterial1,0);
+        cylinder1.position.x = 20;
+        cylinder1.position.y = 26;
+        cylinder1.position.z = 0;
+        cylinder1.rotateZ(Math.PI/2);
+        scene.add( cylinder1 );
+
+        var cyLinderGeometry2 = new THREE.CylinderGeometry( 0.4, 0.4, 18, 36 );
+        var cyLinderMaterial2 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial2 = new Physijs.createMaterial(cyLinderMaterial2,friction,restitution);
+        var cylinder2 = new Physijs.BoxMesh(cyLinderGeometry2, phyCyLinderMaterial2,0);
+        cylinder2.position.x = 0;
+        cylinder2.position.y = 26;
+        cylinder2.position.z = 0;
+        cylinder2.rotateX(Math.PI/2);
+        scene.add( cylinder2 );
+
+        var cyLinderGeometry3 = new THREE.CylinderGeometry( 0.4, 0.4, 18, 36 );
+        var cyLinderMaterial3 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial3 = new Physijs.createMaterial(cyLinderMaterial3,friction,restitution);
+        var cylinder3 = new Physijs.BoxMesh(cyLinderGeometry3, phyCyLinderMaterial3,0);
+        cylinder3.position.x = 40;
+        cylinder3.position.y = 26;
+        cylinder3.position.z = 0;
+        cylinder3.rotateX(Math.PI/2);
+        scene.add( cylinder3 );
+
+        var cyLinderGeometry4 = new THREE.CylinderGeometry( 0.4, 0.4, 26, 36 );
+        var cyLinderMaterial4 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial4 = new Physijs.createMaterial(cyLinderMaterial4,friction,restitution);
+        var cylinder4 = new Physijs.BoxMesh(cyLinderGeometry4, phyCyLinderMaterial4,0);
+        cylinder4.position.x = 0;
+        cylinder4.position.y = 13;
+        cylinder4.position.z = 9;
+        scene.add( cylinder4 );
+
+        var cyLinderGeometry5 = new THREE.CylinderGeometry( 0.4, 0.4, 26, 36 );
+        var cyLinderMaterial5 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial5 = new Physijs.createMaterial(cyLinderMaterial5,friction,restitution);
+        var cylinder5 = new Physijs.BoxMesh(cyLinderGeometry5, phyCyLinderMaterial5,0);
+        cylinder5.position.x = 0;
+        cylinder5.position.y = 13;
+        cylinder5.position.z = -9;
+        scene.add( cylinder5 );
+
+        var cyLinderGeometry6 = new THREE.CylinderGeometry( 0.4, 0.4, 26, 36 );
+        var cyLinderMaterial6 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial6 = new Physijs.createMaterial(cyLinderMaterial6,friction,restitution);
+        var cylinder6 = new Physijs.BoxMesh(cyLinderGeometry6, phyCyLinderMaterial6,0);
+        cylinder6.position.x = 40;
+        cylinder6.position.y = 13;
+        cylinder6.position.z = 9;
+        scene.add( cylinder6 );
+
+        var cyLinderGeometry7 = new THREE.CylinderGeometry( 0.4, 0.4, 26, 36 );
+        var cyLinderMaterial7 = new THREE.ShaderMaterial( {vertexShader: document.getElementById('vs').textContent,
+            fragmentShader: document.getElementById('fs').textContent} );
+        var phyCyLinderMaterial7 = new Physijs.createMaterial(cyLinderMaterial7,friction,restitution);
+        var cylinder7 = new Physijs.BoxMesh(cyLinderGeometry7, phyCyLinderMaterial7,0);
+        cylinder7.position.x = 40;
+        cylinder7.position.y = 13;
+        cylinder7.position.z = -9;
+        scene.add( cylinder7 );
+
+        //球绕轴运动
+        var speedRight = 0;//在全域内作用的一个数字，代表的其实是在一个三角函数线上的x值
+        var stepRight = 0;
+        function goesRoundRight(obj,speedRight){
+            stepRight += speedRight;
+            obj.position.x = 32 + ( 20 * (Math.sin(stepRight)));
+            obj.position.y = 26 +( 20 * (Math.cos(stepRight)));
+        }
+
+        var speedLeft = 0;//在全域内作用的一个数字，代表的其实是在一个三角函数线上的x值
+        var stepLeft = 0;
+        function goesRoundLeft(obj,speedLeft){
+            stepLeft += speedLeft;
+            obj.position.x = 8 + ( 20 * (Math.cos(stepLeft)));
+            obj.position.y = 26 +( 20 * (Math.sin(stepLeft)));
+        }
+
+        //运动
+        function animation()
+        {
+            //绳子
+            var linematerial1 = new THREE.LineBasicMaterial({
+                color: 0x000000
+            });
+            var linegeometry1 = new THREE.Geometry();
+            linegeometry1.vertices.push(
+                new THREE.Vector3( 8, 26, 0 ),
+                new THREE.Vector3( sphere1.position.x, sphere1.position.y, sphere1.position.z )
+            );
+            var line1 = new THREE.Line( linegeometry1, linematerial1);
+            scene.add( line1 );
+            var linematerial2 = new THREE.LineBasicMaterial({
+                color: 0x000000
+            });
+
+            var linegeometry2 = new THREE.Geometry();
+            linegeometry2.vertices.push(
+                new THREE.Vector3( 16, 26, 0 ),
+                new THREE.Vector3( sphere2.position.x, sphere2.position.y, sphere2.position.z )
+            );
+            var line2 = new THREE.Line( linegeometry2, linematerial2);
+            scene.add( line2 );
+
+            var linematerial3 = new THREE.LineBasicMaterial({
+                color: 0x000000
+            });
+            var linegeometry3 = new THREE.Geometry();
+            linegeometry3.vertices.push(
+                new THREE.Vector3( 24, 26, 0 ),
+                new THREE.Vector3( sphere3.position.x, sphere3.position.y, sphere3.position.z )
+            );
+            var line3 = new THREE.Line( linegeometry3, linematerial3);
+            scene.add( line3 );
+            var linematerial4 = new THREE.LineBasicMaterial({
+                color: 0x000000
+            });
+            var linegeometry4 = new THREE.Geometry();
+            linegeometry4.vertices.push(
+                new THREE.Vector3( 32, 26, 0 ),
+                new THREE.Vector3( sphere4.position.x, sphere4.position.y, sphere4.position.z )
+            );
+            var line4 = new THREE.Line( linegeometry4, linematerial4);
+            scene.add( line4 );
+
+            // goesRoundRight(sphere4,0.02);//让球体绕轴旋转
+            // goesRoundLeft(sphere1,0.02);
+            controls.update();
+            scene.simulate();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animation);
+            scene.remove(line1);
+            scene.remove(line2);
+            scene.remove(line3);
+            scene.remove(line4);
+
+        }
+        animation();
+
+        //将渲染的结果输出到指定页面元素中
+        document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+        //渲染场景
+        renderer.render(scene, camera);
+    }
+
+    //确保init方法在网页加载完毕后被调用
+    window.onload = init;
+</script>
+</body>
+</html>
